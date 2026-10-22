@@ -599,9 +599,11 @@ window.NetApp = (() => {
             pan = null; downBg = null;
         });
 
+        let tPan = null, tFolder = null, lastTap = 0;
         // Touch events simplified...
         wrap.addEventListener('touchstart', ev => {
             if (ev.touches.length === 2) {
+                tPan = tFolder = null;
                 const [a, b] = ev.touches;
                 const r = wrap.getBoundingClientRect();
                 pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
@@ -619,7 +621,23 @@ window.NetApp = (() => {
                     tDrag = { n, el: gn, dx: n.x - toWorld(t.clientX, t.clientY).x, dy: n.y - toWorld(t.clientX, t.clientY).y, moved: false };
                 }
                 ev.preventDefault();
+                return;
             }
+            if (mode === 'move') {
+                const fol = elemFol(document.elementFromPoint(t.clientX, t.clientY));
+                if (fol) {
+                    const f = folders.find(x => x.id === +fol.dataset.fid);
+                    if (f) {
+                        const w = toWorld(t.clientX, t.clientY);
+                        tFolder = { f, sx: w.x, sy: w.y, f0x: f.x, f0y: f.y,
+                            pts: pointsInFolder(f).map(p => ({ n: p, x0: p.x, y0: p.y })) };
+                        ev.preventDefault();
+                        return;
+                    }
+                }
+            }
+            tPan = { x: t.clientX, y: t.clientY, tx: view.tx, ty: view.ty, moved: false };
+            ev.preventDefault();
         }, { passive: false });
 
         wrap.addEventListener('touchmove', ev => {
@@ -639,6 +657,23 @@ window.NetApp = (() => {
                 tDrag.el.style.left = tDrag.n.x + 'px';
                 tDrag.el.style.top = tDrag.n.y + 'px';
                 updateEdges();
+            } else if (tFolder) {
+                const w = toWorld(t.clientX, t.clientY);
+                const d = tFolder;
+                d.f.x = d.f0x + w.x - d.sx; d.f.y = d.f0y + w.y - d.sy;
+                const el = document.querySelector(`.folder[data-fid="${d.f.id}"]`);
+                if (el) { el.style.left = d.f.x + 'px'; el.style.top = d.f.y + 'px'; }
+                d.pts.forEach(p2 => {
+                    p2.n.x = p2.x0 + w.x - d.sx; p2.n.y = p2.y0 + w.y - d.sy;
+                    const pe = document.querySelector(`.gn[data-id="${p2.n.id}"]`);
+                    if (pe) { pe.style.left = p2.n.x + 'px'; pe.style.top = p2.n.y + 'px'; }
+                });
+                updateEdges();
+            } else if (tPan) {
+                if (Math.abs(t.clientX - tPan.x) > 4 || Math.abs(t.clientY - tPan.y) > 4) tPan.moved = true;
+                view.tx = tPan.tx + t.clientX - tPan.x;
+                view.ty = tPan.ty + t.clientY - tPan.y;
+                applyView();
             } else if (tLink) {
                 const w = toWorld(t.clientX, t.clientY);
                 const a = byId(tLink.from);
@@ -655,7 +690,23 @@ window.NetApp = (() => {
                 if (gn) connect(tLink.from, +gn.dataset.id);
                 tLink.temp.remove();
             }
-            tDrag = tLink = pinch = null;
+            if (tFolder) { render(); }
+            if (tPan && !tPan.moved && !tDrag && !tLink && !tFolder) {
+                if (mode === 'add') {
+                    const w = toWorld(t.clientX, t.clientY);
+                    placeAt(w.x, w.y);
+                } else if (mode === 'move' && !document.elementFromPoint(t.clientX, t.clientY).closest('.gn, .folder')) {
+                    selected = null; render(); renderInspector();
+                }
+                const now = Date.now();
+                if (now - lastTap < 300) { lastTap = 0; fit(); }
+                else lastTap = now;
+            }
+            tDrag = tLink = pinch = tPan = tFolder = null;
+        });
+
+        wrap.addEventListener('dblclick', ev => {
+            if (!document.elementFromPoint(ev.clientX, ev.clientY).closest('.gn, .folder, .gedge')) fit();
         });
 
         function tempPath() {
@@ -1108,6 +1159,60 @@ window.NetApp = (() => {
         on('openWinBtn', 'click', () => window.open(location.pathname, 'neuroCtor', 'width=1280,height=860'));
     }
 
+    function bindTabbar() {
+        const bar = $('tabbar');
+        const panels = { left: $('panelLeft'), stage: $('stage'), right: $('panelRight') };
+        if (!bar || !panels.left || !panels.stage || !panels.right) return;
+
+        const mq = window.matchMedia('(max-width: 767px)');
+        let cur = 'stage';
+
+        function showTab(name) {
+            cur = name;
+            Object.keys(panels).forEach(k => panels[k].classList.toggle('hidden-m', k !== name));
+            bar.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+            if (name === 'stage') { render(); applyView(); }
+        }
+
+        bar.addEventListener('click', ev => {
+            const b = ev.target.closest('button[data-tab]');
+            if (b) showTab(b.dataset.tab);
+        });
+
+        let colBtn = null;
+        const syncColBtn = () => {
+            if (!colBtn) return;
+            const collapsed = panels.right.classList.contains('collapsed-m');
+            colBtn.classList.toggle('collapsed', collapsed);
+            const t = T(collapsed ? 'net.tab.expand' : 'net.tab.collapse');
+            colBtn.title = t;
+            colBtn.setAttribute('aria-label', t);
+        };
+
+        const head = panels.right.querySelector('.panel-head');
+        if (head) {
+            colBtn = document.createElement('button');
+            colBtn.type = 'button';
+            colBtn.className = 'panel-col-btn';
+            colBtn.textContent = '▾';
+            colBtn.addEventListener('click', () => {
+                panels.right.classList.toggle('collapsed-m');
+                syncColBtn();
+            });
+            head.appendChild(colBtn);
+            syncColBtn();
+        }
+
+        const sync = isMobile => {
+            if (isMobile) showTab(cur);
+            else Object.values(panels).forEach(p => p.classList.remove('hidden-m'));
+        };
+
+        mq.addEventListener('change', ev => sync(ev.matches));
+        window.addEventListener('langchange', syncColBtn);
+        sync(mq.matches);
+    }
+
     function flash(msg) { const el = $('trainStatus'); if (el) el.textContent = msg; }
 
     async function init() {
@@ -1116,7 +1221,7 @@ window.NetApp = (() => {
         tooltip.className = 'node-info-tooltip';
         document.body.appendChild(tooltip);
 
-        bindStage(); bindUI();
+        bindStage(); bindUI(); bindTabbar();
         window.addEventListener('langchange', () => {
             setTrainingUI(training);
             render(); renderInspector();

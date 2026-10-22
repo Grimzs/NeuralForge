@@ -365,6 +365,7 @@ textarea { resize: vertical; font-family: ui-monospace, Consolas, monospace; fon
 
 /* ── Мобильный таб-бар ── */
 .tabbar { display: none; }
+.panel-col-btn { display: none; }
 
 /* ============================================================
    АДАПТИВНОСТЬ
@@ -378,6 +379,15 @@ textarea { resize: vertical; font-family: ui-monospace, Consolas, monospace; fon
     }
     .panel-right.collapsed-m { height: 42px; }
     .panel-right.collapsed-m .panel-body { display: none; }
+    .panel-col-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; margin-left: auto; flex-shrink: 0; padding: 0;
+        border: 1px solid var(--border); border-radius: 7px;
+        background: none; color: var(--text-faint); font-size: .8rem; line-height: 1;
+        cursor: pointer; transition: transform .2s, color .2s;
+    }
+    .panel-col-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .panel-col-btn.collapsed { transform: rotate(180deg); }
 }
 
 /* Мобильный: панели — полноэкранные вкладки, нижний таб-бар */
@@ -387,6 +397,8 @@ textarea { resize: vertical; font-family: ui-monospace, Consolas, monospace; fon
     }
     .app-shell > * { position: absolute; inset: 0; z-index: 1; }
     .panel-left, .panel-right { border-radius: 0; border: none; }
+    .panel-right { height: 100%; }
+    .panel-right.collapsed-m { height: 42px; }
     .stage { position: absolute; inset: 0; border-radius: 0; border: none; }
     .app-shell > .hidden-m { display: none !important; }
     .tabbar {

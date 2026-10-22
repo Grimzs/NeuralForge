@@ -264,6 +264,8 @@ window.I18N = (() => {
             'net.tab.net': 'Сеть',
             'net.tab.scene': 'Сцена',
             'net.tab.data': 'Данные',
+            'net.tab.collapse': 'Свернуть панель',
+            'net.tab.expand': 'Развернуть панель',
 
             'net.tip.node': 'Узел:',
             'net.tip.kind': 'Тип:',
@@ -600,6 +602,8 @@ window.I18N = (() => {
             'net.tab.net': 'Network',
             'net.tab.scene': 'Scene',
             'net.tab.data': 'Data',
+            'net.tab.collapse': 'Collapse panel',
+            'net.tab.expand': 'Expand panel',
 
             'net.tip.node': 'Node:',
             'net.tip.kind': 'Type:',
