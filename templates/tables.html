@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block title %}Таблицы{% endblock %}
+{% block title_key %}tables.title{% endblock %}
+
+{% block content %}
+<div class="page">
+    <h1 data-i18n="tables.h1">📋 Таблицы (xlsx)</h1>
+    <p class="sub" data-i18n-html="tables.sub.html">Общая структура: колонки <b>x…</b> — входы, <b>y…</b> — выходы,
+        <b>pX…</b>/<b>pY…</b> — пояснения к соответствующим колонкам,
+        колонка <b>p</b> (или «описание») — пояснение самой таблицы.</p>
+
+    <div class="grid-2">
+        <!-- Файлы -->
+        <div class="panel-card">
+            <span class="lbl" data-i18n="tables.files.lbl">Файлы</span>
+            <div class="row-btns">
+                <label class="btn file-btn"><span data-i18n="tables.files.pick">📄 Выбрать xlsx (несколько)</span><input type="file" id="tFiles" accept=".xlsx" multiple hidden></label>
+                <button class="btn btn-primary" id="tUpload" data-i18n="tables.files.upload">⬆ Загрузить</button>
+            </div>
+            <div id="tFileList" style="margin-top:8px"></div>
+            <div class="row-btns">
+                <button class="btn btn-sm" id="tOpenAll" data-i18n="tables.files.openAll">📂 Открыть все в обработку</button>
+                <button class="btn btn-sm" id="tRefresh" data-i18n="tables.files.refresh">↻ Обновить</button>
+            </div>
+            <p class="hint" style="margin-top:8px" data-i18n="tables.files.hint">
+                Загружайте сразу несколько файлов — «Открыть все» добавит каждый в обработку.
+                Клик по файлу — открыть в редакторе справа.</p>
+        </div>
+
+        <!-- Редактор -->
+        <div class="panel-card">
+            <span class="lbl"><span data-i18n="tables.open.lbl">Открытая таблица</span> <span class="hint" id="tStatus">— не открыта</span></span>
+            <div class="row-btns" style="display:grid;grid-template-columns:1fr 1fr auto auto">
+                <select id="tSheet" title="Лист книги" data-i18n-title="tables.open.sheet.title"></select>
+                <input id="tRange" placeholder="диапазон: B2:E40" title="Диапазон данных: первая строка — заголовки" data-i18n-ph="tables.open.range.ph" data-i18n-title="tables.open.range.title">
+                <button class="btn btn-sm" id="tApply" title="Применить лист/диапазон" data-i18n-title="tables.open.apply.title">↻</button>
+                <button class="btn btn-sm btn-danger" id="tClose" title="Закрыть" data-i18n-title="tables.open.close.title">✕</button>
+            </div>
+            <div style="margin-top:6px"><span class="hint" data-i18n="tables.desc.hint">пояснение таблицы (колонка p)</span>
+                <input id="tDesc" placeholder="что это за таблица" data-i18n-ph="tables.desc.ph"></div>
+            <div class="table-scroll" style="max-height:340px;margin-top:8px">
+                <table class="pred-table tbl-grid" id="tGrid"></table>
+            </div>
+            <div class="row-btns">
+                <button class="btn btn-sm" id="tAddRow" data-i18n="tables.addRow">＋ строка</button>
+                <button class="btn btn-sm" id="tAddCol" data-i18n="tables.addCol">＋ колонка</button>
+                <span class="hint" id="tInfo"></span>
+            </div>
+            <div class="row-btns">
+                <button class="btn btn-primary" id="tSave" data-i18n="tables.save">💾 Сохранить изменения</button>
+                <button class="btn" id="tSaveCopy" data-i18n="tables.saveCopy">💾 Сохранить как копию</button>
+            </div>
+            <p class="hint" data-i18n="tables.roles.hint">Клик по бейджу роли (x / y / pX / pY / —) меняет роль колонки.
+                Заголовок колонки можно переименовать — роль пересчитается (например «temp» → «x3»).</p>
+        </div>
+    </div>
+
+    <!-- Обработка нескольких файлов -->
+    <div class="panel-card" style="margin-top:14px">
+        <span class="lbl" data-i18n="tables.multi.lbl">Обработка нескольких файлов</span>
+        <p class="hint" data-i18n="tables.multi.hint">Открытые таблицы обрабатываются вместе: строки склеиваются в общий датасет,
+            либо колонки X разных файлов соединяются по строкам («для отдельных входных данных»).</p>
+        <div id="tMulti" style="margin-top:6px"></div>
+        <div class="row-btns">
+            <div class="seg" id="tMode">
+                <button data-v="rows" class="active" data-i18n="tables.mode.rows">≡ По строкам (склеить)</button>
+                <button data-v="cols" data-i18n="tables.mode.cols">⊞ По столбцам X (соединить)</button>
+            </div>
+        </div>
+        <div class="row-btns">
+            <button class="btn btn-primary" id="tCombine" data-i18n="tables.combine">⚡ Обработать все</button>
+            <span class="hint" id="tCombInfo"></span>
+        </div>
+        <div class="row-btns" id="tHandoff" style="display:none">
+            <button class="btn" id="tToTrain" data-i18n="tables.toTrain">📚 → Обучение (конструктор 3)</button>
+            <button class="btn" id="tToTest" data-i18n="tables.toTest">🧪 → Тест (конструктор 3)</button>
+        </div>
+        <pre class="pred-out-pre" id="tCombOut">—</pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+(() => {
+    const $ = id => document.getElementById(id);
+    const T = (k, p) => I18N.t(k, p);
+    const ROLES = ['x', 'y', 'px', 'py', 'other'];
+    const ROLE_TX = { x: 'x', y: 'y', px: 'pX', py: 'pY', desc: 'p', other: '—', ignore: '—' };
+
+    let cur = null;          // открытая таблица {file, sheet, sheets, range, description, columns, n_rows}
+    let multi = [];          // открытые в обработку: те же объекты таблиц
+    let combineMode = 'rows';
+    let combined = null;     // {X: 'text', y: 'text'} последней обработки
+
+    // ── роль по заголовку (как на сервере) ──
+    function roleOf(header) {
+        const h = String(header || '').trim().toLowerCase();
+        if (!h) return 'ignore';
+        if (h.startsWith('px')) return 'px';
+        if (h.startsWith('py')) return 'py';
+        if (['p','опис','описание','поясн','примеч','desc','description','note','comment'].some(d => h === d || h.startsWith(d))) return 'desc';
+        if (h.startsWith('x')) return 'x';
+        if (h.startsWith('y')) return 'y';
+        return 'other';
+    }
+
+    // ══════════ Файлы ══════════
+    async function refreshFiles() {
+        const r = await fetch('/api/table/list');
+        const files = await r.json();
+        $('tFileList').innerHTML = files.length ? '' : `<span class="hint">${T('tables.files.none')}</span>`;
+        files.forEach(f => {
+            const row = document.createElement('div');
+            row.className = 'lib-card';
+            row.innerHTML = `<a href="#" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ${f.file}</a>
+                <button class="btn btn-sm" title="${T('tables.files.open.title')}">📂</button>
+                <button class="btn btn-sm btn-danger" title="${T('tables.files.del.title')}">🗑</button>`;
+            const [open, del] = row.querySelectorAll('button');
+            const doOpen = e => { e.preventDefault(); openTable(f.file); };
+            row.querySelector('a').onclick = doOpen;
+            open.onclick = doOpen;
+            del.onclick = async () => {
+                if (!confirm(T('tables.files.del.confirm', { file: f.file }))) return;
+                await fetch('/api/table/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: f.name }) });
+                if (cur && cur.file === f.file) { cur = null; renderGrid(); }
+                multi = multi.filter(t => t.file !== f.file);
+                renderMulti();
+                refreshFiles();
+            };
+            $('tFileList').appendChild(row);
+        });
+    }
+
+    $('tUpload').onclick = async () => {
+        const inp = $('tFiles');
+        if (!inp.files.length) return flash(T('tables.up.pickFirst'));
+        const fd = new FormData();
+        for (const f of inp.files) fd.append('files', f);
+        const r = await fetch('/api/table/upload', { method: 'POST', body: fd });
+        const d = await r.json();
+        flash(T('tables.up.done', { list: (d.saved || []).join(', ') || '—' })
+            + (d.skipped && d.skipped.length ? T('tables.up.skipped', { list: d.skipped.join(', ') }) : ''));
+        inp.value = '';
+        refreshFiles();
+    };
+    $('tRefresh').onclick = refreshFiles;
+
+    // ══════════ Открытие таблицы ══════════
+    async function openTable(file, sheet, rng) {
+        try {
+            const q = 'file=' + encodeURIComponent(file)
+                + (sheet ? '&sheet=' + encodeURIComponent(sheet) : '')
+                + (rng ? '&rng=' + encodeURIComponent(rng) : '');
+            const r = await fetch('/api/table/open?' + q);
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.detail || T('tables.open.err'));
+            // нормализуем длины колонок
+            const n = Math.max(0, ...d.columns.map(c => (c.values || []).length));
+            d.columns.forEach(c => {
+                c.values = (c.values || []).slice(0, n);
+                while (c.values.length < n) c.values.push(null);
+            });
+            cur = d;
+            const key = d.file + '|' + d.sheet;
+            const idx = multi.findIndex(t => t.file + '|' + t.sheet === key);
+            if (idx >= 0) multi[idx] = cur; else multi.push(cur);
+            renderOpen();
+            flash(T('tables.open.flash', { file: d.file, sheet: d.sheet, range: d.range }));
+        } catch (e) { flash(T('err.prefix') + e.message); }
+    }
+
+    $('tOpenAll').onclick = async () => {
+        const r = await fetch('/api/table/list');
+        const files = await r.json();
+        if (!files.length) return flash(T('tables.open.noFiles'));
+        for (const f of files) await openTable(f.file);
+        flash(T('tables.open.inProc', { n: multi.length }));
+    };
+
+    function renderOpen() {
+        if (!cur) {
+            $('tStatus').textContent = T('tables.open.none');
+            $('tSheet').innerHTML = ''; $('tRange').value = ''; $('tDesc').value = '';
+            renderGrid(); return;
+        }
+        $('tStatus').textContent = `${cur.file} · ${cur.range}`;
+        $('tSheet').innerHTML = cur.sheets.map(s => `<option ${s === cur.sheet ? 'selected' : ''}>${s}</option>`).join('');
+        $('tRange').value = cur.range;
+        $('tDesc').value = cur.description || '';
+        renderGrid(); renderMulti();
+    }
+
+    $('tApply').onclick = () => {
+        if (!cur) return flash(T('tables.open.first'));
+        openTable(cur.file, $('tSheet').value, $('tRange').value.trim());
+    };
+    $('tClose').onclick = () => { cur = null; renderOpen(); };
+    $('tSheet').onchange = () => { if (cur) openTable(cur.file, $('tSheet').value, $('tRange').value.trim()); };
+
+    // ══════════ Редактор-сетка ══════════
+    function renderGrid() {
+        const t = $('tGrid');
+        if (!cur) { t.innerHTML = ''; $('tInfo').textContent = ''; return; }
+        const n = Math.max(0, ...cur.columns.map(c => c.values.length));
+        let html = '<tr><th></th>';
+        cur.columns.forEach((c, j) => {
+            html += `<th><span class="role-b role-${c.role}" data-j="${j}" title="${T('tables.grid.role.title')}">${ROLE_TX[c.role] || '—'}</span>
+                <input data-h="${j}" value="${String(c.header || '').replace(/"/g, '&quot;')}"></th>`;
+        });
+        html += '<th></th></tr>';
+        for (let i = 0; i < n; i++) {
+            html += `<tr><td class="hint">${i + 1}</td>`;
+            cur.columns.forEach((c, j) => {
+                const v = c.values[i];
+                html += `<td><input data-j="${j}" data-i="${i}" value="${v === null || v === undefined ? '' : String(v).replace(/"/g, '&quot;')}"></td>`;
+            });
+            html += `<td><button class="btn btn-sm btn-danger" data-delrow="${i}" title="${T('tables.grid.delRow.title')}">✕</button></td></tr>`;
+        }
+        t.innerHTML = html;
+        // шапка: роль и заголовок
+        t.querySelectorAll('[data-h]').forEach(inp => inp.onchange = () => {
+            const j = +inp.dataset.h;
+            cur.columns[j].header = inp.value;
+            const nr = roleOf(inp.value);
+            cur.columns[j].role = nr === 'ignore' ? 'other' : nr;
+            renderGrid(); renderMulti();
+        });
+        t.querySelectorAll('.role-b').forEach(b => b.onclick = () => {
+            const j = +b.dataset.j;
+            const c = cur.columns[j];
+            const k = ROLES.indexOf(c.role);
+            c.role = ROLES[(k + 1) % ROLES.length];
+            renderGrid(); renderMulti();
+        });
+        // ячейки
+        t.querySelectorAll('td input[data-i]').forEach(inp => inp.onchange = () => {
+            const j = +inp.dataset.j, i = +inp.dataset.i;
+            cur.columns[j].values[i] = inp.value.trim() === '' ? null : inp.value.trim();
+        });
+        t.querySelectorAll('[data-delrow]').forEach(b => b.onclick = () => {
+            const i = +b.dataset.delrow;
+            cur.columns.forEach(c => c.values.splice(i, 1));
+            renderGrid(); renderMulti();
+        });
+        const nx = cur.columns.filter(c => c.role === 'x').length;
+        const ny = cur.columns.filter(c => c.role === 'y').length;
+        const np = cur.columns.filter(c => c.role === 'px' || c.role === 'py').length;
+        $('tInfo').textContent = T('tables.grid.info', { n, nx, ny, np });
+    }
+
+    $('tAddRow').onclick = () => {
+        if (!cur) return flash(T('tables.open.firstT'));
+        cur.columns.forEach(c => c.values.push(null));
+        renderGrid(); renderMulti();
+    };
+    $('tAddCol').onclick = () => {
+        if (!cur) return flash(T('tables.open.firstT'));
+        const n = Math.max(0, ...cur.columns.map(c => c.values.length));
+        const header = prompt(T('tables.col.prompt'), 'x' + (cur.columns.filter(c => c.role === 'x').length + 1));
+        if (!header) return;
+        const role = roleOf(header);
+        cur.columns.push({ header, role: role === 'ignore' ? 'other' : role, values: Array(n).fill(null) });
+        renderGrid(); renderMulti();
+    };
+
+    // ══════════ Сохранение ══════════
+    async function saveTable(mode, copyName) {
+        if (!cur) return flash(T('tables.save.nothing'));
+        const payload = {
+            file: cur.file, sheet: cur.sheet, range: cur.range,
+            description: $('tDesc').value,
+            columns: cur.columns.map(c => ({ header: c.header, values: c.values })),
+            mode, copy_name: copyName || '',
+        };
+        const r = await fetch('/api/table/save', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const d = await r.json();
+        if (!r.ok) return flash(T('err.prefix') + (d.detail || T('tables.save.err')));
+        flash(T('tables.save.ok', { file: d.saved, range: d.range }) + (mode === 'copy' ? T('tables.save.copy') : T('tables.save.over')));
+        await refreshFiles();
+        if (mode === 'copy') await openTable(d.saved);
+        else { cur.range = d.range; renderOpen(); }
+    }
+    $('tSave').onclick = async () => {
+        if (!cur) return;
+        if (!confirm(T('tables.save.confirm', { file: cur.file, sheet: cur.sheet, range: cur.range }))) return;
+        saveTable('overwrite');
+    };
+    $('tSaveCopy').onclick = async () => {
+        if (!cur) return;
+        const name = prompt(T('tables.save.copyName'), cur.file.replace(/\.xlsx$/i, '') + T('tables.save.copySuffix'));
+        if (name === null) return;
+        saveTable('copy', name);
+    };
+
+    // ══════════ Обработка нескольких файлов ══════════
+    function renderMulti() {
+        const box = $('tMulti');
+        box.innerHTML = multi.length ? '' : `<span class="hint">${T('tables.multi.empty')}</span>`;
+        multi.forEach((t, k) => {
+            const nx = t.columns.filter(c => c.role === 'x').length;
+            const ny = t.columns.filter(c => c.role === 'y').length;
+            const row = document.createElement('div');
+            row.className = 'lib-card';
+            row.innerHTML = `<span>📄 ${t.file} · ${t.sheet}</span>
+                <span class="hint">X ${nx} · Y ${ny} · ${T('tables.rows')} ${Math.max(0, ...t.columns.map(c => c.values.length))}</span>
+                <span style="flex:1"></span>
+                <button class="btn btn-sm" title="${T('tables.files.open.title')}">📂</button>
+                <button class="btn btn-sm btn-danger" title="${T('tables.multi.drop.title')}">✕</button>`;
+            const [open, drop] = row.querySelectorAll('button');
+            open.onclick = () => openTable(t.file, t.sheet, t.range);
+            drop.onclick = () => { multi.splice(k, 1); renderMulti(); };
+            box.appendChild(row);
+        });
+    }
+
+    $('tMode').querySelectorAll('button').forEach(b => b.onclick = () => {
+        combineMode = b.dataset.v;
+        $('tMode').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    });
+
+    const numeric = v => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !isNaN(+v));
+    const num = v => typeof v === 'number' ? v : +v;
+
+    $('tCombine').onclick = () => {
+        if (!multi.length) { $('tCombOut').textContent = T('tables.comb.none'); return; }
+        let skipped = 0;
+        const rowsOf = t => {
+            const xc = t.columns.filter(c => c.role === 'x');
+            const yc = t.columns.filter(c => c.role === 'y');
+            const n = Math.max(0, ...t.columns.map(c => c.values.length));
+            const rows = [];
+            for (let i = 0; i < n; i++) {
+                const xr = xc.map(c => c.values[i]);
+                const yr = yc.map(c => c.values[i]);
+                if (xr.some(v => !numeric(v)) || (yc.length && yr.some(v => !numeric(v)))) { skipped++; continue; }
+                rows.push({ x: xr.map(num), y: yc.length ? yr.map(num) : null });
+            }
+            return rows;
+        };
+        let X = [], y = [];
+        if (combineMode === 'rows') {
+            const nxs = multi.map(t => t.columns.filter(c => c.role === 'x').length);
+            if (new Set(nxs).size !== 1)
+                return $('tCombOut').textContent = T('tables.comb.rowsX', { list: nxs.join(' / ') });
+            const nys = multi.map(t => t.columns.filter(c => c.role === 'y').length);
+            const hasY = nys.some(n => n > 0);
+            if (hasY && new Set(nys).size !== 1)
+                return $('tCombOut').textContent = T('tables.comb.rowsY', { list: nys.join(' / ') });
+            multi.forEach(t => rowsOf(t).forEach(r => { X.push(r.x); if (hasY) y.push(r.y); }));
+        } else {
+            const all = multi.map(rowsOf);
+            const n = Math.min(...all.map(rs => rs.length));
+            for (let i = 0; i < n; i++) {
+                X.push(all.reduce((acc, rs) => acc.concat(rs[i].x), []));
+                const yr = all.find(rs => rs[i] && rs[i].y);
+                if (yr) y.push(yr[i].y);
+            }
+        }
+        if (!X.length) { $('tCombOut').textContent = T('tables.comb.empty'); $('tHandoff').style.display = 'none'; return; }
+        const Xtext = X.map(r => r.join(',')).join('\n');
+        const ytext = y.length ? y.map(r => r.join(',')).join('\n') : '';
+        combined = { X: Xtext, y: ytext };
+        $('tCombOut').textContent =
+            T('tables.comb.res.head', { n: multi.length, mode: combineMode === 'rows' ? T('tables.comb.mode.rows') : T('tables.comb.mode.cols'), rows: X.length, nx: X[0].length })
+            + (y.length ? T('tables.comb.res.y', { ny: y[0].length }) : T('tables.comb.res.noy'))
+            + (skipped ? T('tables.comb.res.skipped', { n: skipped }) : '');
+        $('tCombInfo').textContent = '';
+        $('tHandoff').style.display = '';
+    };
+
+    function handoff(kind) {
+        if (!combined) return flash(T('tables.handoff.first'));
+        localStorage.setItem('neuro_tables_' + kind, JSON.stringify(combined));
+        sessionStorage.setItem('neuro_tables_apply', '1');
+        location.href = '/';
+    }
+    $('tToTrain').onclick = () => handoff('train');
+    $('tToTest').onclick = () => handoff('test');
+
+    function flash(msg) { $('tCombOut').textContent = msg; }
+
+    window.addEventListener('langchange', () => { refreshFiles(); renderOpen(); });
+
+    refreshFiles();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}Конструктор{% endblock %} · {{ site.name }}</title>
+    <meta name="description" content="{{ site.description }}">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script>
+        // Тема применяется до рендера, чтобы не мигал экран
+        const t = localStorage.getItem('theme');
+        if (t) document.documentElement.dataset.theme = t;
+    </script>
+    <script src="/static/js/i18n.js"></script>
+</head>
+<body data-title-key="{% block title_key %}base.constructor{% endblock %}" data-site-name="{{ site.name }}">
+
+    <header class="app-header">
+        <a href="/" class="logo">
+            <span class="logo-ic">{{ site.logo_icon }}</span>
+            <span class="logo-tx">{{ site.name }}</span>
+            <span class="logo-badge" data-i18n="base.badge">нейро-конструктор</span>
+        </a>
+
+        <nav class="top-nav" aria-label="Разделы" data-i18n-aria="base.nav.aria">
+            <a href="/neurons" class="{% if active == 'neurons' %}active{% endif %}" data-i18n="nav.neurons">1 · Нейроны</a>
+            <a href="/build"   class="{% if active == 'build' %}active{% endif %}" data-i18n="nav.build">2 · Сборка</a>
+            <a href="/"        class="{% if active == 'home' %}active{% endif %}" data-i18n="nav.all">3 · Всё вместе</a>
+            <a href="/tables"  class="{% if active == 'tables' %}active{% endif %}" data-i18n="nav.tables">Таблицы</a>
+            <a href="/settings" class="{% if active == 'settings' %}active{% endif %}" data-i18n="nav.settings">Настройки</a>
+            <a href="/help"     class="{% if active == 'help' %}active{% endif %}" data-i18n="nav.help">Справка</a>
+        </nav>
+
+        <div class="header-tools">
+            <button class="icon-btn" id="langBtn" title="Switch language / Сменить язык" data-i18n-title="base.langTitle">EN</button>
+            <button class="icon-btn" id="themeBtn" title="Светлая / тёмная тема" data-i18n-title="base.themeTitle">◐</button>
+            <button class="icon-btn burger" id="burger" aria-label="Меню" data-i18n-aria="base.menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block footer %}
+    <footer class="site-footer">
+        <div class="footer-support">
+            <a class="support-link" href="{{ site.boosty }}" target="_blank" rel="noopener" data-i18n="footer.support.title">💜 Поддержать автора</a>
+            <span class="support-text" data-i18n="footer.support.text">Понравился проект? Поддержите автора на Boosty — это поможет обзавестись новым оборудованием и делать новые проекты. Спасибо за внимание!</span>
+        </div>
+        <div class="footer-inner">
+            <div class="footer-brand"><strong>{{ site.logo_icon }} {{ site.name }}</strong> <span class="footer-ver">v{{ site.version }}</span></div>
+            <div class="footer-links">
+                <a href="{{ site.github }}" target="_blank" rel="noopener">GitHub</a>
+                <a href="{{ site.boosty }}" target="_blank" rel="noopener">boosty</a>
+            </div>
+            <div class="footer-copy">© {{ site.year }} {{ site.author }} · {{ site.license }}</div>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <script>
+        // Переключение языка
+        const langBtn = document.getElementById('langBtn');
+        if (langBtn) {
+            const updLangBtn = () => { langBtn.textContent = I18N.getLang() === 'ru' ? 'EN' : 'RU'; };
+            langBtn.addEventListener('click', () => I18N.toggle());
+            window.addEventListener('langchange', updLangBtn);
+            updLangBtn();
+        }
+        const applyDocTitle = () => {
+            const k = document.body.dataset.titleKey;
+            if (k) document.title = I18N.t(k) + ' · ' + (document.body.dataset.siteName || '');
+        };
+        window.addEventListener('langchange', applyDocTitle);
+        applyDocTitle();
+        // Переключение темы
+        const themeBtn = document.getElementById('themeBtn');
+        if (themeBtn) themeBtn.addEventListener('click', () => {
+            const el = document.documentElement;
+            const next = el.dataset.theme === 'light' ? 'dark' : 'light';
+            el.dataset.theme = next;
+            localStorage.setItem('theme', next);
+            window.dispatchEvent(new CustomEvent('themechange'));
+        });
+        // Бургер (мобильное меню)
+        const burger = document.getElementById('burger');
+        if (burger) burger.addEventListener('click', () => {
+            const nav = document.querySelector('.top-nav');
+            const open = burger.classList.toggle('open');
+            nav.classList.toggle('open', open);
+            burger.setAttribute('aria-expanded', open);
+        });
+        document.querySelectorAll('.top-nav a').forEach(a => a.addEventListener('click', () => {
+            document.querySelector('.top-nav').classList.remove('open');
+            burger.classList.remove('open');
+        }));
+    </script>
+
+    {% block extra_script %}{% endblock %}
+</body>
+</html>

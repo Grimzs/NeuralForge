@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Справка{% endblock %}
+{% block title_key %}help.title{% endblock %}
+
+{% block content %}
+<div class="page">
+    <h1 data-i18n="help.h1">📘 Справка</h1>
+    <p class="sub" data-i18n="help.sub">Конструктор нейросетей со свободным графом: точки и связи вы строите сами.</p>
+
+    <div class="panel-card" style="margin-bottom:14px">
+        <span class="lbl" data-i18n="help.constructors.lbl">Три конструктора</span>
+        <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.constructors.p">
+            <b>1 · Нейроны</b> — настройка отдельного нейрона (тип, активация, смещение b,
+            комментарий) и сохранение карточки в библиотеку.<br>
+            <b>2 · Сборка</b> — конструктор сети: создание точек и добавление готовых нейронов
+            из библиотеки. Обучение включается только для нужных объектов: кнопка ❄ у папки
+            или в инспекторе точки замораживает их веса (❄ = обучение не трогает).<br>
+            <b>3 · Всё вместе</b> — то же плюс тестирование: по таблице (X и цели y —
+            ✓/✗ по строкам) и вручную в реальном времени (меняете вход — сеть отвечает сразу).
+        </p>
+    </div>
+
+    <div class="grid-2">
+        <div class="panel-card">
+            <span class="lbl" data-i18n="help.points.lbl">1 · Точки</span>
+            <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.points.p">
+                На панели «Сеть» выберите тип (<b>Вход / Скрытый / Выход</b>) и способ:
+                <b>⊙ Одиночное</b> — одна точка там, где кликнете, или <b>⧉ Комплексное</b> —
+                столбик из нескольких точек сразу (это и есть ваш «слой»).
+                Включите <b>＋ Точки</b> на сцене и кликните по полю.
+                Например: 3 входных — комплексно, а четвёртую — одиночно, где нужно.
+            </p>
+            <span class="lbl" data-i18n="help.links.lbl">2 · Связи — вручную</span>
+            <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.links.p">
+                Включите <b>🔗 Связи</b> и тяните от точки к точке.
+                Во вход тянуть нельзя, из выхода — тоже, циклы запрещены.
+                <b>Каждая связь — отдельный вес.</b>
+            </p>
+            <span class="lbl" data-i18n="help.edit.lbl">3 · Правка</span>
+            <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.edit.p">
+                <b>Клик по связи</b> — вставить скрытый нейрон прямо в разрыв
+                (сигнал сохраняется: w → w·1).<br>
+                <b>ПКМ по связи</b> — удалить её <b>с потерей веса</b>.<br>
+                <b>ПКМ по точке</b> — удалить точку со связями.<br>
+                Двойной клик по точке — комментарий.
+            </p>
+        </div>
+
+        <div class="panel-card">
+            <span class="lbl" data-i18n="help.train.lbl">4 · Обучение</span>
+            <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.train.p">
+                «▶ Обучать» — живой цикл: порции эпох, кривая loss и подсветка
+                обновляются на ходу; «⏭» — один шаг; «↺» — сброс весов.
+                Пока структура не меняется, обучение продолжается с тех же весов.
+                Если вы удалили/добавили связи — выжившие веса переносятся,
+                новые стартуют заново.
+            </p>
+            <span class="lbl" data-i18n="help.weights.lbl">5 · Анализ весов</span>
+            <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.weights.p">
+                После прогона связи показывают, какие веса <b>горят сильнее</b>:
+                оранжевые — большие |вес|×активация, жёлтые — средние, тусклые — слабые.
+                Наведите на связь — точное значение веса, на точку — её активацию.
+                Клик по строке таблицы — подсветка для этой строки данных.
+            </p>
+            <span class="lbl" data-i18n="help.save.lbl">6 · Сохранение</span>
+            <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.save.p">
+                Конфигурация (точки, позиции, связи, веса) — на сервере;
+                выходы предсказаний — в CSV. Скрытые нейроны имеют смещения (bias).
+            </p>
+        </div>
+    </div>
+
+    <div class="panel-card" style="margin-top:14px">
+        <span class="lbl" data-i18n="help.devices.lbl">Устройства</span>
+        <p style="font-size:.84rem; color:var(--text-dim); line-height:1.55" data-i18n-html="help.devices.p">
+            Компьютер — три панели; планшет — панель данных сворачивается;
+            телефон — вкладки «Сеть / Сцена / Данные», точки двигаются пальцем,
+            щипок — зум. Все данные можно грузить из CSV-файлов.
+        </p>
+    </div>
+</div>
+{% endblock %}

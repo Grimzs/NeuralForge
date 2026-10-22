@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Конструктор 1 · Нейроны{% endblock %}
+{% block title_key %}neurons.title{% endblock %}
+
+{% block content %}
+<div class="page">
+    <h1 data-i18n="neurons.h1">1 · Нейроны</h1>
+    <p class="sub" data-i18n="neurons.sub">Настройка отдельного нейрона и сохранение его карточки в библиотеку.
+        Готовые нейроны потом добавляются на сцену в конструкторах «2 · Сборка» и «3 · Всё вместе».</p>
+
+    <div class="grid-2">
+        <div class="panel-card">
+            <span class="lbl" data-i18n="neurons.card.lbl">Карточка нейрона</span>
+            <div class="row-btns" style="display:grid;grid-template-columns:1fr 1fr">
+                <div><span class="hint" data-i18n="neurons.name.hint">имя (для библиотеки)</span>
+                    <input id="nrName" placeholder="например: gate-tanh" data-i18n-ph="neurons.name.ph"></div>
+                <div><span class="hint" data-i18n="neurons.b.hint">смещение b (bias)</span>
+                    <input id="nrB" type="number" step="0.1" value="0"></div>
+            </div>
+            <div style="margin-top:8px"><span class="hint" data-i18n="neurons.kind.hint">тип</span>
+                <div class="seg" id="nrKind">
+                    <button data-v="input" data-i18n="neurons.seg.input">⇥ Вход</button>
+                    <button data-v="hidden" class="active" data-i18n="neurons.seg.hidden">◍ Скрытый</button>
+                    <button data-v="output" data-i18n="neurons.seg.output">⇤ Выход</button>
+                </div>
+            </div>
+            <div class="gn-count" style="margin-top:8px">
+                <div><span class="hint" data-i18n="neurons.act.hint">активация</span>
+                    <select id="nrAct">
+                        <option>tanh</option><option>relu</option><option>sigmoid</option><option>linear</option>
+                    </select>
+                </div>
+                <div><span class="hint" data-i18n="neurons.cmt.hint">комментарий</span>
+                    <input id="nrCmt" placeholder="пояснение" data-i18n-ph="neurons.cmt.ph"></div>
+            </div>
+            <p class="hint" style="margin-top:6px" data-i18n="neurons.chart.hint">Точка на графике — отклик нейрона без входов:
+                a = act(b). Появится на сцене с этим смещением.</p>
+            <canvas id="nrChart" style="width:100%;height:150px;margin-top:6px"></canvas>
+            <div class="row-btns">
+                <button class="btn btn-primary" id="nrSave" data-i18n="neurons.save">💾 Сохранить в библиотеку</button>
+                <button class="btn" id="nrCheck" title="Проверить отклик при своём z" data-i18n-title="neurons.check.title">⚡ a = act(b)</button>
+            </div>
+            <pre class="pred-out-pre" id="nrOut">—</pre>
+        </div>
+
+        <div class="panel-card">
+            <span class="lbl" data-i18n="neurons.lib.lbl">Библиотека</span>
+            <div class="table-scroll"><table class="pred-table" id="libTable"></table></div>
+            <div class="row-btns">
+                <button class="btn btn-sm" id="libRefresh" data-i18n="neurons.lib.refresh">↻ Обновить</button>
+                <span class="hint" id="libCount"></span>
+            </div>
+            <p class="hint" style="margin-top:8px" data-i18n="neurons.lib.hint">Добавление на сцену — в конструкторах 2 и 3,
+            секция «Библиотека готовых нейронов» (слева). Там же решаете:
+            добавлять нейрон обучаемым или замороженным (❄).</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+(() => {
+    const $ = id => document.getElementById(id);
+    const T = (k, p) => I18N.t(k, p);
+    const ACTS = {
+        linear:  z => z,
+        relu:    z => Math.max(0, z),
+        tanh:    z => Math.tanh(z),
+        sigmoid: z => 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, z)))),
+    };
+    let kind = 'hidden';
+
+    function drawCurve() {
+        const c = $('nrChart');
+        const dpr = window.devicePixelRatio || 1;
+        const w = c.clientWidth || 420, h = 150;
+        c.width = w * dpr; c.height = h * dpr;
+        const ctx = c.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+        const cs = getComputedStyle(document.documentElement);
+        const accent = cs.getPropertyValue('--accent').trim() || '#6f7ff0';
+        const dim = 'rgba(128,128,140,.5)';
+        const act = ACTS[$('nrAct').value] || ACTS.tanh;
+        const b = parseFloat($('nrB').value) || 0;
+        const Z = 6;
+        const samples = [];
+        for (let i = 0; i <= 120; i++) {
+            const z = -Z + 2 * Z * i / 120;
+            samples.push(act(z));
+        }
+        const ab = act(b);
+        let ymin = Math.min(-1, Math.min(...samples), ab);
+        let ymax = Math.max(1, Math.max(...samples), ab);
+        const X = z => (z + Z) / (2 * Z) * (w - 10) + 5;
+        const Y = v => h - 8 - (v - ymin) / (ymax - ymin) * (h - 16);
+        ctx.strokeStyle = dim; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(w, Y(0)); ctx.stroke();      // ось z
+        ctx.beginPath(); ctx.moveTo(X(0), 0); ctx.lineTo(X(0), h); ctx.stroke();      // z = 0
+        ctx.beginPath();
+        samples.forEach((v, i) => {
+            const z = -Z + 2 * Z * i / 120;
+            i ? ctx.lineTo(X(z), Y(v)) : ctx.moveTo(X(z), Y(v));
+        });
+        ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.stroke();
+        // точка: отклик при z = 0 (без входов z = b)
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.arc(X(0), Y(ab), 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = dim; ctx.font = '10px system-ui';
+        ctx.fillText(`a = act(b) = ${(+ab.toPrecision(3))}`, X(0) + 8, Y(ab) - 6);
+    }
+
+    function renderLib(list) {
+        const t = $('libTable');
+        if (!list.length) {
+            t.innerHTML = '';
+            $('libCount').textContent = T('neurons.lib.empty');
+            return;
+        }
+        let html = `<tr><th>${T('neurons.lib.th.name')}</th><th>${T('neurons.lib.th.type')}</th><th>${T('neurons.lib.th.act')}</th><th>${T('neurons.lib.th.b')}</th><th>${T('neurons.lib.th.cmt')}</th><th></th></tr>`;
+        list.forEach(c => {
+            html += `<tr>
+                <td>${c.name}</td>
+                <td>${T('k.' + c.kind)}</td>
+                <td>${c.kind === 'input' ? '—' : (c.activation || '—')}</td>
+                <td>${(+c.b).toFixed(2)}</td>
+                <td>${(c.comment || '').replace(/</g, '&lt;')}</td>
+                <td><button class="btn btn-sm btn-danger" data-del="${c.name}" title="${T('neurons.lib.del.title')}">🗑</button></td>
+            </tr>`;
+        });
+        t.innerHTML = html;
+        $('libCount').textContent = T('neurons.lib.count', { n: list.length });
+        t.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+            if (!confirm(T('neurons.lib.del.confirm', { name: b.dataset.del }))) return;
+            await fetch('/api/neuron/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: b.dataset.del }),
+            });
+            refreshLib();
+        });
+    }
+
+    async function refreshLib() {
+        const r = await fetch('/api/neuron/list');
+        renderLib(await r.json());
+    }
+
+    $('nrKind').querySelectorAll('button').forEach(b => b.onclick = () => {
+        kind = b.dataset.v;
+        $('nrKind').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+        $('nrAct').disabled = kind === 'input';   // у входа активации нет
+        drawCurve();
+    });
+    ['nrAct', 'nrB'].forEach(id => $(id).addEventListener('change', drawCurve));
+    window.addEventListener('themechange', drawCurve);
+    window.addEventListener('resize', drawCurve);
+    window.addEventListener('langchange', refreshLib);
+
+    $('nrCheck').onclick = () => {
+        const act = ACTS[$('nrAct').value] || ACTS.tanh;
+        const b = parseFloat($('nrB').value) || 0;
+        const a = act(b);
+        $('nrOut').textContent = `b = ${b} → a = act(b) = ${(+a.toPrecision(6))}`;
+    };
+
+    $('nrSave').onclick = async () => {
+        const name = $('nrName').value.trim();
+        if (!name) return $('nrOut').textContent = T('neurons.err.name');
+        const neuron = {
+            kind,
+            activation: kind === 'input' ? null : $('nrAct').value,
+            b: parseFloat($('nrB').value) || 0,
+            comment: $('nrCmt').value.trim(),
+        };
+        const r = await fetch('/api/neuron/save', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, neuron }),
+        });
+        const d = await r.json();
+        $('nrOut').textContent = r.ok
+            ? T('neurons.saved', { name: d.saved })
+            : T('err.prefix') + (d.detail || T('err.notSaved'));
+        if (r.ok) refreshLib();
+    };
+
+    $('libRefresh').onclick = refreshLib;
+    drawCurve();
+    refreshLib();
+})();
+</script>
+{% endblock %}

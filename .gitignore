@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment / secrets
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Runtime data (user content; data/site_info.json stays tracked)
+data/networks/*.json
+data/neurons/*.json
+data/modules/*.json
+data/tables/*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,21 @@
+{
+  "name": "NeuralForge Neuro-Constructor",
+  "tagline": "Визуальный конструктор графовых нейронных сетей",
+  "description": "Инструмент для проектирования, обучения и анализа нейросетей с произвольной архитектурой графа. Поддержка модульности, работа с XLSX-датасетами и интерактивный анализ весов в реальном времени.",
+  "version": "1.0.0",
+  "status": "Beta",
+
+  "logo_icon": "🧠",
+  "favicon": "/static/favicon.ico",
+
+  "author": "Grimzs",
+  "boosty": "https://boosty.to/nacro",
+  "github": "https://github.com/Grimzs",
+
+  "stack": ["FastAPI", "Jinja2", "NumPy", "OpenPyXL", "Python 3.11"],
+  "environment": "production",
+  "license": "MIT",
+
+  "year": 2024,
+  "last_update": "2024-05-20 12:00"
+}

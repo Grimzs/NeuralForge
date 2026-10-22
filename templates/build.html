@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Конструктор 2 · Сборка{% endblock %}
+{% block title_key %}net.title2{% endblock %}
+
+{% block content %}
+<div class="app-shell" id="appShell">
+
+    <!-- ══════════ ЛЕВАЯ ПАНЕЛЬ: точки, связи, библиотека ══════════ -->
+    <aside class="panel panel-left" id="panelLeft">
+        <div class="panel-head">🧠 <span data-i18n="net.head">Сеть</span> <span class="hint" id="netStats"></span></div>
+        <div class="panel-body">
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.pts.lbl">Точки — что ставить</span>
+                <div class="seg" id="segKind">
+                    <button data-v="input" data-i18n="neurons.seg.input">⇥ Вход</button>
+                    <button data-v="hidden" class="active" data-i18n="neurons.seg.hidden">◍ Скрытый</button>
+                    <button data-v="output" data-i18n="neurons.seg.output">⇤ Выход</button>
+                </div>
+                <div class="seg" id="segHow" style="margin-top:5px">
+                    <button data-v="single" data-i18n="net.seg.single">⊙ Одиночное</button>
+                    <button data-v="multi" data-i18n="net.seg.multi">⧉ Комплексное</button>
+                </div>
+                <div class="gn-count" style="margin-top:6px">
+                    <div id="cntWrap" hidden>
+                        <span class="hint" data-i18n="net.cnt.hint">сколько точек (столбик)</span>
+                        <input id="addCount" type="number" min="1" max="64" value="5">
+                    </div>
+                    <div id="actWrap">
+                        <span class="hint" data-i18n="neurons.act.hint">активация</span>
+                        <select id="addAct">
+                            <option>tanh</option><option>relu</option><option>sigmoid</option><option>linear</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="hint" style="margin-top:6px" data-i18n-html="net.pts.hint.html">Включите <b>＋ Точки</b> на сцене и кликните по полю:
+                    одна точка или столбик из нескольких — ваш «слой».</p>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.lib.lbl">Библиотека готовых нейронов</span>
+                <div class="row-btns" style="display:grid;grid-template-columns:1fr auto auto">
+                    <select id="libSelect"><option value="" data-i18n="net.lib.choose">— выберите —</option></select>
+                    <button class="btn btn-sm" id="libAddBtn" title="Добавить на сцену" data-i18n-title="net.lib.add.title">＋</button>
+                    <button class="btn btn-sm" id="libRefreshBtn" title="Обновить список" data-i18n-title="net.lib.refresh.title">↻</button>
+                </div>
+                <label class="chk-row"><input type="checkbox" id="libTrainable" checked> <span data-i18n="net.lib.trainable">добавлять обучаемым (иначе ❄)</span></label>
+                <p class="hint" style="margin-top:4px" data-i18n="net.lib.hint">Карточки нейронов создаёт «1 · Нейроны».
+                    ❄ = заморожен: обучение его веса не трогает.</p>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.sel.lbl">Выбранная точка</span>
+                <div id="inspector" class="inspector" data-i18n="net.inspector.empty">кликните по точке в режиме ✋</div>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.foldersTrain.lbl">Папки и обучение</span>
+                <p class="hint" style="line-height:1.5" data-i18n-html="net.foldersTrain.hint.html">
+                    📁＋ — создать окно-папку на сцене. Точки, попавшие внутрь,
+                    двигаются вместе с ней.<br>
+                    Кнопки папки: ❄/🔥 <b>заморозить/разморозить</b> обучение точек внутри
+                    (обучение трогает только незамороженные объекты) ·
+                    📋 <b>копировать</b> · ✂️ <b>вырезать</b> · 🗑 <b>удалить</b>.<br>
+                    В инспекторе точки — переключатель <b>🔥/❄ обучение вкл/выкл</b>.
+                </p>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.links.lbl">Связи — вручную</span>
+                <p class="hint" style="line-height:1.5" data-i18n-html="net.links.hint.html">
+                    🔗 <b>Связи</b>: тяните от точки к точке.<br>
+                    Клик по линии — <b>вставить скрытый нейрон в разрыв</b> (сигнал сохраняется: w→w·1).<br>
+                    ПКМ по линии — удалить связь <b>с потерей её веса</b>.<br>
+                    ПКМ по точке — удалить точку со всеми её связями.<br>
+                    Двойной клик по точке — комментарий.
+                </p>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.cfg.lbl">🌐 Вся сеть</span>
+                <div class="row-btns" style="display:grid;grid-template-columns:1fr auto">
+                    <input id="cfgName" placeholder="имя конфигурации" data-i18n-ph="net.cfg.name.ph">
+                    <button class="btn btn-sm" id="saveCfgBtn">💾</button>
+                </div>
+                <div class="row-btns" style="display:grid;grid-template-columns:1fr auto">
+                    <select id="loadCfgSelect"><option value="" data-i18n="net.cfg.load">— загрузить —</option></select>
+                    <button class="btn btn-sm" id="loadCfgBtn">📂</button>
+                </div>
+                <hr style="border:none;border-top:1px solid var(--surface-2);margin:10px 0">
+                <span class="lbl" data-i18n="net.mod.lbl">📦 Модули</span>
+                <div class="row-btns" style="display:grid;grid-template-columns:1fr auto">
+                    <input id="modName" placeholder="имя модуля (сохранить выделенное)" data-i18n-ph="net.mod.name.ph">
+                    <button class="btn btn-sm" id="saveModBtn">💾</button>
+                </div>
+                <div class="row-btns" style="display:grid;grid-template-columns:1fr auto">
+                    <select id="loadModSelect"><option value="" data-i18n="net.cfg.load">— загрузить —</option></select>
+                    <button class="btn btn-sm" id="loadModBtn">📥</button>
+                </div>
+                <label class="hint" style="display:flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer">
+                    <input type="checkbox" id="modReplaceInputs">
+                    <span data-i18n="net.mod.replace">Интегрируемый блок: входы → порты (сигнал из сети)</span>
+                </label>
+                <button class="btn btn-sm" id="openWinBtn" style="width:100%;margin-top:10px" data-i18n="net.openWin">⛶ Открыть в отдельном окне</button>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- ══════════ ЦЕНТР: сцена ══════════ -->
+    <section class="stage mode-move" id="stage">
+        <div class="stage-toolbar">
+            <div class="seg" id="segMode" style="background:var(--surface-2);backdrop-filter:blur(8px)">
+                <button data-v="move" class="active" data-i18n="net.mode.move">✋ Двигать</button>
+                <button data-v="add" data-i18n="net.mode.add">＋ Точки</button>
+                <button data-v="link" data-i18n="net.mode.link">🔗 Связи</button>
+            </div>
+            <span style="flex:1"></span>
+            <button class="btn btn-sm" id="newFolderBtn" title="Создать папку (окно-контейнер)" data-i18n-title="net.newFolder.title">📁＋</button>
+            <button class="btn btn-sm" id="pasteBtn" title="Вставить из буфера (после копировать/вырезать)" data-i18n-title="net.paste.title">📥</button>
+            <div class="zoom-group">
+                <button id="zoomOut" title="Уменьшить" data-i18n-title="net.zoom.out.title">−</button>
+                <span class="zoom-val" id="zoomVal">100%</span>
+                <button id="zoomIn" title="Увеличить" data-i18n-title="net.zoom.in.title">＋</button>
+                <button id="zoomFit" title="Вписать" data-i18n-title="net.zoom.fit.title">⤢</button>
+            </div>
+            <button class="btn btn-sm btn-danger" id="clearBtn" title="Очистить сцену" data-i18n-title="net.clear.title">🧹</button>
+        </div>
+
+        <div id="canvasWrap">
+            <div id="world">
+                <svg id="edgeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+            <div class="stage-empty" id="stageEmpty" style="display:none">
+                <div class="big">🧠</div>
+                <div data-i18n="net.stage.empty">Сцена пуста</div>
+                <div class="hint" data-i18n="net.stage.empty.hint">＋ Точки → клик по полю · 🔗 Связи → тяни от точки к точке</div>
+            </div>
+        </div>
+
+        <div class="stage-legend">
+            <span><span class="legend-dot" style="background:var(--c-out)"></span><span data-i18n="net.legend.strong">сильный вес</span></span>
+            <span><span class="legend-dot" style="background:var(--warn)"></span><span data-i18n="net.legend.mid">средний</span></span>
+            <span><span class="legend-dot" style="background:var(--accent)"></span><span data-i18n="net.legend.weak">слабый</span></span>
+            <span data-i18n="net.legend.note">· связь = отдельный вес · ❄ = заморожен (без обучения)</span>
+        </div>
+    </section>
+
+    <!-- ══════════ ПРАВАЯ ПАНЕЛЬ: данные и обучение ══════════ -->
+    <aside class="panel panel-right" id="panelRight">
+        <div class="panel-head panel-collapse" id="rightHead">📊 <span data-i18n="net.data.head2">Данные и обучение</span> <span class="spacer"></span><span class="chev">▾</span></div>
+        <div class="panel-body-part" id="rightBody">
+        <div class="panel-body">
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.ds.lbl">Датасет (соберёт стартовый граф)</span>
+                <div class="row-btns" style="display:grid;grid-template-columns:1fr auto">
+                    <select id="dsSelect">
+                        <option value="manual" data-i18n="net.ds.manual">✍ Свои данные</option>
+                        <option value="xor" selected>XOR</option>
+                        <option value="circle" data-i18n="net.ds.circle">Круг</option>
+                        <option value="spiral" data-i18n="net.ds.spiral">Спирали</option>
+                        <option value="linear" data-i18n="net.ds.linear">Линейная регрессия</option>
+                    </select>
+                    <button class="btn btn-sm" id="takeTablesTrainBtn" title="Взять данные со страницы «Таблицы» (xlsx)" data-i18n-title="net.ds.tables.title" data-i18n="net.ds.tables">📥 Таблицы</button>
+                </div>
+                <span class="lbl"><span data-i18n="net.ds.X.lbl">Входы X</span> <span class="hint" data-i18n="net.rows.hint">(строки: a,b,…)</span></span>
+                <textarea id="dataX" rows="4">0,0
+0,1
+1,0
+1,1</textarea>
+                <span class="lbl" data-i18n="net.y.lbl">Цели y</span>
+                <textarea id="dataY" rows="4">0
+1
+1
+0</textarea>
+                <div class="row-btns">
+                    <label class="btn btn-sm file-btn"><span data-i18n="net.fileX">📄 Файл X</span><input type="file" id="fileX" accept=".csv,.txt"></label>
+                    <label class="btn btn-sm file-btn"><span data-i18n="net.fileY">📄 Файл y</span><input type="file" id="fileY" accept=".csv,.txt"></label>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.train.lbl">Параметры обучения</span>
+                <div class="metrics-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div><input id="lr" type="number" value="0.8" step="0.05" title="Скорость обучения" data-i18n-title="net.train.lr.title"></div>
+                    <div><input id="epStep" type="number" value="100" title="Эпох за шаг" data-i18n-title="settings.ep.hint"></div>
+                    <div><input id="batch" type="number" value="0" placeholder="батч" title="0 = весь датасет" data-i18n-ph="net.train.batch.ph" data-i18n-title="net.train.batch.title"></div>
+                </div>
+                <div class="hint" style="margin-top:3px" data-i18n="net.train.hint">lr · эпох/шаг · батч (0 = всё)</div>
+                <div class="train-btns" style="margin-top:8px">
+                    <button class="btn btn-primary" id="trainBtn" data-i18n="net.train.run">▶ Обучать</button>
+                    <button class="btn btn-sm" id="stepBtn" title="Один шаг" data-i18n-title="net.train.step.title">⏭</button>
+                    <button class="btn btn-sm" id="resetBtn" title="Сбросить веса" data-i18n-title="net.train.reset.title">↺</button>
+                </div>
+                <div class="progress"><div id="trainProg"></div></div>
+                <div class="status" id="trainStatus" data-i18n="net.status.ready">Готов к работе</div>
+                <p class="hint" style="margin-top:6px" data-i18n="net.train.freezeHint">Обучаются только незамороженные точки (без ❄).
+                    Замораживайте папкой ❄ или в инспекторе точки.</p>
+            </div>
+
+            <div class="panel-section">
+                <span class="lbl" data-i18n="net.curve.lbl">Кривая обучения</span>
+                <canvas id="lossChart"></canvas>
+                <div class="metrics-row">
+                    <div class="metric"><div class="mv" id="mEpochs">0</div><div class="mk" data-i18n="net.mk.epochs">эпохи</div></div>
+                    <div class="metric"><div class="mv" id="mLoss">—</div><div class="mk">loss</div></div>
+                    <div class="metric"><div class="mv" id="mAcc">—</div><div class="mk" data-i18n="net.mk.acc">точность</div></div>
+                </div>
+                <p class="hint" data-i18n="net.test.goHint">Тестирование сети — в конструкторе «3 · Всё вместе»:
+                таблица и ручной режим реального времени.</p>
+            </div>
+
+        </div>
+        </div>
+    </aside>
+</div>
+
+<!-- Мобильный таб-бар -->
+<div class="tabbar" id="tabbar">
+    <button data-tab="left">🧠<span class="tic" data-i18n="net.tab.net">Сеть</span></button>
+    <button data-tab="stage" class="active"><span class="tic">🗺</span><span class="tic" data-i18n="net.tab.scene">Сцена</span></button>
+    <button data-tab="right">📊<span class="tic" data-i18n="net.tab.data">Данные</span></button>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script src="/static/js/netapp.js"></script>
+{% endblock %}

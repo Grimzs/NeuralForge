@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+{% block title_key %}settings.title{% endblock %}
+
+{% block content %}
+<div class="page">
+    <h1 data-i18n="settings.h1">⚙️ Настройки</h1>
+    <p class="sub" data-i18n="settings.sub">Параметры по умолчанию для конструктора и информация о системе.</p>
+
+    <div class="grid-2">
+        <div class="panel-card">
+            <span class="lbl" data-i18n="settings.train.lbl">Обучение по умолчанию</span>
+            <div class="grid-2" style="grid-template-columns: 1fr 1fr; gap:8px">
+                <div><span class="hint" data-i18n="settings.lr.hint">Скорость (lr)</span><input id="s-lr" type="number" step="0.05"></div>
+                <div><span class="hint" data-i18n="settings.ep.hint">Эпох за шаг</span><input id="s-ep" type="number"></div>
+                <div><span class="hint" data-i18n="settings.batch.hint">Батч (0 = всё)</span><input id="s-batch" type="number"></div>
+                <div><span class="hint" data-i18n="settings.loss.hint">Функция потерь</span>
+                    <select id="s-loss"><option value="bce" data-i18n="settings.loss.bce">bce (классификация)</option><option value="mse" data-i18n="settings.loss.mse">mse (регрессия)</option></select>
+                </div>
+            </div>
+            <div class="row-btns" style="margin-top:10px">
+                <button class="btn btn-primary btn-sm" id="saveDefaults" data-i18n="settings.save">💾 Сохранить</button>
+                <button class="btn btn-sm" id="clearDefaults" data-i18n="settings.reset">Сбросить</button>
+            </div>
+            <p class="hint" style="margin-top:8px" data-i18n="settings.store.hint">Настройки хранятся в браузере и применяются при открытии конструктора.</p>
+        </div>
+
+        <div class="panel-card">
+            <span class="lbl" data-i18n="settings.about.lbl">О системе</span>
+            <table class="pred-table" style="text-align:left">
+                <tr><td data-i18n="settings.about.name">Название</td><td>{{ site.name }}</td></tr>
+                <tr><td data-i18n="settings.about.version">Версия</td><td>{{ site.version }}</td></tr>
+                <tr><td data-i18n="settings.about.stack">Стек</td><td>{{ site.stack | join(', ') }}</td></tr>
+                <tr><td data-i18n="settings.about.status">Статус</td><td>{{ site.status }}</td></tr>
+                <tr><td data-i18n="settings.about.updated">Обновлено</td><td>{{ site.last_update }}</td></tr>
+            </table>
+            <span class="lbl" data-i18n="settings.cfgs.lbl">Сохранённые конфигурации</span>
+            <ul style="font-size:.82rem; color:var(--text-dim); padding-left:18px">
+                {% for n in saved_nets %}<li>{{ n }}</li>{% else %}<li data-i18n="settings.cfgs.none">пока нет</li>{% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    const K = 'neuro_defaults';
+    const ids = { 's-lr': 'lr', 's-ep': 'epStep', 's-batch': 'batch', 's-loss': 'loss' };
+    function load() {
+        const d = JSON.parse(localStorage.getItem(K) || '{}');
+        for (const [id, key] of Object.entries(ids)) {
+            const el = document.getElementById(id);
+            if (d[key] != null) el.value = d[key];
+        }
+    }
+    document.getElementById('saveDefaults').onclick = () => {
+        const d = {};
+        for (const [id, key] of Object.entries(ids)) d[key] = document.getElementById(id).value;
+        localStorage.setItem(K, JSON.stringify(d));
+        alert(I18N.t('alert.saved'));
+    };
+    document.getElementById('clearDefaults').onclick = () => {
+        localStorage.removeItem(K); load(); alert(I18N.t('alert.reset'));
+    };
+    load();
+</script>
+{% endblock %}
